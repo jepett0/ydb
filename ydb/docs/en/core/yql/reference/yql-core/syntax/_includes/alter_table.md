@@ -42,7 +42,19 @@ You can also add a secondary index using the {{ ydb-short-name }} CLI [table ind
 
 ### Altering an index {#alter-index}
 
-Indexes have type-dependent parameters that could be tuned. Global indexes (both [sync](../../../../concepts/secondary_indexes#sync) and [async](../../../../concepts/secondary_indexes#async)) are implemented as a hidden table that behaves just like any other table in {{ ydb-short-name }}: it spans several partitions which can split or merge depending on the load and size of the partitions. 
+Indexes have type-dependent parameters that could be tuned. Global indexes (both [sync](../../../../concepts/secondary_indexes#sync) and [async](../../../../concepts/secondary_indexes#async)) are implemented as a hidden table whose automatic partitioning settings can be changed:
+
+```sql
+ALTER TABLE `series` ALTER INDEX `title_index` SET AUTO_PARTITIONING_BY_LOAD ENABLED
+```
+```sql
+ALTER TABLE `series` ALTER INDEX `title_index` SET (
+    AUTO_PARTITIONING_BY_LOAD = ENABLED,
+    AUTO_PARTITIONING_MIN_PARTITIONS_COUNT = 3
+)
+```
+
+
 
 ### Deleting an index {#drop-index}
 

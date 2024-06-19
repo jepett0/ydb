@@ -26,7 +26,9 @@ ALTER TABLE episodes DROP column is_deleted;
 
 {% if feature_secondary_index %}
 
-## Adding or removing a secondary index {#secondary-index}
+## Secondary indexes {#secondary-index}
+
+### Adding an index {#add-index}
 
 ```ADD INDEX```: Adds an index with the specified name and type for a given set of columns. The code below adds a global index named ```title_index``` for the ```title``` column.
 
@@ -36,7 +38,13 @@ ALTER TABLE `series` ADD INDEX `title_index` GLOBAL ON (`title`);
 
 You can specify any index parameters from the [`CREATE TABLE`](../create_table#secondary_index) command.
 
-Deleting an index:
+You can also add a secondary index using the {{ ydb-short-name }} CLI [table index](https://ydb.tech/en/docs/reference/ydb-cli/commands/secondary_index#add) command.
+
+### Altering an index {#alter-index}
+
+Indexes have type-dependent parameters that could be tuned. Global indexes (both [sync](../../../../concepts/secondary_indexes#sync) and [async](../../../../concepts/secondary_indexes#async)) are implemented as a hidden table that behaves just like any other table in {{ ydb-short-name }}: it spans several partitions which can split or merge depending on the load and size of the partitions. 
+
+### Deleting an index {#drop-index}
 
 ```DROP INDEX```: Deletes the index with the specified name. The code below deletes the index named ```title_index```.
 
@@ -44,9 +52,9 @@ Deleting an index:
 ALTER TABLE `series` DROP INDEX `title_index`;
 ```
 
-You can also add or remove a secondary index using the {{ ydb-short-name }} CLI [table index](https://ydb.tech/en/docs/reference/ydb-cli/commands/secondary_index) command.
+You can also remove a secondary index using the {{ ydb-short-name }} CLI [table index](https://ydb.tech/en/docs/reference/ydb-cli/commands/secondary_index#drop) command.
 
-## Renaming a secondary index {#rename-secondary-index}
+### Renaming a index {#rename-index}
 
 `RENAME INDEX`: Renames the index with the specified name.
 

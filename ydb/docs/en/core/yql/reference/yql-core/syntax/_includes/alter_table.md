@@ -42,19 +42,33 @@ You can also add a secondary index using the {{ ydb-short-name }} CLI [table ind
 
 ### Altering an index {#alter-index}
 
-Indexes have type-dependent parameters that could be tuned. Global indexes (both [sync](../../../../concepts/secondary_indexes#sync) and [async](../../../../concepts/secondary_indexes#async)) are implemented as a hidden table whose automatic partitioning settings can be changed:
+Indexes have type-specific parameters that can be tuned. Global indexes, whether [synchronous](../../../../concepts/secondary_indexes#sync) or [asynchronous](../../../../concepts/secondary_indexes#async), are implemented as hidden tables, and their automatic partitioning settings can be adjusted just like [those of regular tables](#additional-alter).
 
 ```sql
-ALTER TABLE `series` ALTER INDEX `title_index` SET AUTO_PARTITIONING_BY_LOAD ENABLED
-```
-```sql
-ALTER TABLE `series` ALTER INDEX `title_index` SET (
-    AUTO_PARTITIONING_BY_LOAD = ENABLED,
-    AUTO_PARTITIONING_MIN_PARTITIONS_COUNT = 3
-)
+ALTER TABLE table_name ALTER INDEX index_name SET partitioning_setting_name value;
+ALTER TABLE table_name ALTER INDEX index_name SET (partitioning_setting_name_1 = value_1, ...);
 ```
 
+`table_name`: The name of the table whose index is to be altered.
 
+`index_name`: The name of the index to be altered.
+
+`partitioning_setting_name`: The name of the setting to be altered, which should be one of the following:
+- [AUTO_PARTITIONING_BY_SIZE]({{ concept_table }}#auto_partitioning_by_size)
+- [AUTO_PARTITIONING_BY_LOAD]({{ concept_table }}#auto_partitioning_by_load)
+- [AUTO_PARTITIONING_PARTITION_SIZE_MB]({{ concept_table }}#auto_partitioning_by_size_mb)
+- [AUTO_PARTITIONING_MIN_PARTITIONS_COUNT]({{ concept_table }}#auto_partitioning_min_partitions_count)
+- [AUTO_PARTITIONING_MAX_PARTITIONS_COUNT]({{ concept_table }}#auto_partitioning_max_parririons_count)
+
+{% note info %}
+
+These settings cannot be [reset](#additional-reset).
+
+{% endnote %}
+
+`value`: The new value for the setting. Possible values include:
+- `ENABLED` or `DISABLED` for `AUTO_PARTITIONING_BY_SIZE` and `AUTO_PARTITIONING_BY_LOAD`
+- `Uint64` for the other settings
 
 ### Deleting an index {#drop-index}
 

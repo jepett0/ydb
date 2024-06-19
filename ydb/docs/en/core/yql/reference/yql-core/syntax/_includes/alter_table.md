@@ -68,7 +68,7 @@ These settings cannot be [reset](#additional-reset).
 
 `value`: The new value for the setting. Possible values include:
 - `ENABLED` or `DISABLED` for `AUTO_PARTITIONING_BY_SIZE` and `AUTO_PARTITIONING_BY_LOAD`
-- `Uint64` for the other settings
+- integer of `Uint64` type for the other settings
 
 ### Deleting an index {#drop-index}
 

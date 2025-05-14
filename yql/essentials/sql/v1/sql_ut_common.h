@@ -1192,7 +1192,7 @@ Y_UNIT_TEST_SUITE(SqlParsingOnly) {
 
     Y_UNIT_TEST(AlterDatabaseAst) {
         NYql::TAstParseResult request = SqlToYql("USE plato; ALTER DATABASE `/Root/test` OWNER TO user1;");
-        UNIT_ASSERT(request.IsOk());
+        UNIT_ASSERT_C(request.IsOk(), request.Issues.ToString());
 
         TVerifyLineFunc verifyLine = [](const TString& word, const TString& line) {
             Y_UNUSED(word);
@@ -1205,6 +1205,57 @@ Y_UNIT_TEST_SUITE(SqlParsingOnly) {
         TWordCountHive elementStat({TString("\'mode \'alterDatabase")});
         VerifyProgram(request, elementStat, verifyLine);
         UNIT_ASSERT_VALUES_EQUAL(1, elementStat["\'mode \'alterDatabase"]);
+    }
+
+    Y_UNIT_TEST(AlterDatabaseFeature) {
+        NYql::TAstParseResult res = SqlToYql("USE plato; ALTER DATABASE `/Root/test` SET key1 = value1;");
+        UNIT_ASSERT_C(res.IsOk(), res.Issues.ToString());
+
+        TVerifyLineFunc verifyLine = [&](const TString& word, const TString& line) {
+            if (word == "Write!") {
+                UNIT_ASSERT_STRING_CONTAINS(line, "(Key '('databasePath (String '\"/Root/test\")))");
+                UNIT_ASSERT_STRING_CONTAINS(line, "'('('mode 'alterDatabase) '('\"key1\" '\"value1\"))");
+            }
+        };
+
+        TWordCountHive elementStat = { {"Write!"} };
+        VerifyProgram(res, elementStat, verifyLine);
+
+        UNIT_ASSERT_VALUES_EQUAL(elementStat["Write!"], 1);
+    }
+
+    Y_UNIT_TEST(AlterDatabaseFeatures) {
+        NYql::TAstParseResult res = SqlToYql("USE plato; ALTER DATABASE `/Root/test` SET (key1 = value1, key2 = value2);");
+        UNIT_ASSERT_C(res.IsOk(), res.Issues.ToString());
+
+        TVerifyLineFunc verifyLine = [&](const TString& word, const TString& line) {
+            if (word == "Write!") {
+                UNIT_ASSERT_STRING_CONTAINS(line, "(Key '('databasePath (String '\"/Root/test\")))");
+                UNIT_ASSERT_STRING_CONTAINS(line, "'('('mode 'alterDatabase) '('\"key1\" '\"value1\") '('\"key2\" '\"value2\"))");
+            }
+        };
+
+        TWordCountHive elementStat = { {"Write!"} };
+        VerifyProgram(res, elementStat, verifyLine);
+
+        UNIT_ASSERT_VALUES_EQUAL(elementStat["Write!"], 1);
+    }
+
+    Y_UNIT_TEST(AlterDatabaseFlag) {
+        NYql::TAstParseResult res = SqlToYql("USE plato; ALTER DATABASE `/Root/test` SET flag1;");
+        UNIT_ASSERT_C(res.IsOk(), res.Issues.ToString());
+
+        TVerifyLineFunc verifyLine = [&](const TString& word, const TString& line) {
+            if (word == "Write!") {
+                UNIT_ASSERT_STRING_CONTAINS(line, "(Key '('databasePath (String '\"/Root/test\")))");
+                UNIT_ASSERT_STRING_CONTAINS(line, "'('('mode 'alterDatabase) '('\"flag1\"))");
+            }
+        };
+
+        TWordCountHive elementStat = { {"Write!"} };
+        VerifyProgram(res, elementStat, verifyLine);
+
+        UNIT_ASSERT_VALUES_EQUAL(elementStat["Write!"], 1);
     }
 
     Y_UNIT_TEST(CreateTableNonNullableYqlTypeAstCorrect) {

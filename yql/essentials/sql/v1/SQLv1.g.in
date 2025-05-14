@@ -693,7 +693,11 @@ table_tablestore: TABLESTORE simple_table_ref_core;
 table_settings_entry: an_id EQUALS table_setting_value;
 table_as_source: AS values_source;
 
-alter_database_stmt: ALTER DATABASE an_id_schema OWNER TO role_name;
+alter_database_stmt: ALTER DATABASE an_id_schema alter_database_action;
+alter_database_action:
+    OWNER TO role_name
+  | SET object_features
+;
 
 alter_table_stmt: ALTER TABLE simple_table_ref alter_table_action (COMMA alter_table_action)*;
 alter_table_action:

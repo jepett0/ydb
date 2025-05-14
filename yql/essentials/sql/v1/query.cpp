@@ -1314,6 +1314,19 @@ TNodePtr BuildCreateTable(TPosition pos, const TTableRef& tr, bool existingOk, b
     return new TCreateTableNode(pos, tr, existingOk, replaceIfExists, params, std::move(values), scoped);
 }
 
+namespace {
+
+bool InitFeatures(TContext& ctx, ISource* src, const std::map<TString, TDeferredAtom>& features) {
+    for (auto& [key, value] : features) {
+        if (value.HasNode() && !value.Build()->Init(ctx, src)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+}
+
 class TAlterDatabaseNode final : public TAstListNode {
 public:
     TAlterDatabaseNode(
@@ -1339,6 +1352,16 @@ public:
 
         if (Params.Owner.has_value()) {
             options = L(options, Q(Y(Q("owner"), Params.Owner.value().Build())));
+        }
+        if (!InitFeatures(ctx, src, Params.Features)) {
+            return false;
+        }
+        for (const auto& [key, value] : Params.Features) {
+            if (value.HasNode()) {
+                options = L(options, Q(Y(BuildQuotedAtom(Pos, key), value.Build())));
+            } else {
+                options = L(options, Q(Y(BuildQuotedAtom(Pos, key))));
+            }
         }
 
         Add("block", Q(Y(

@@ -23,6 +23,10 @@ Y_UNIT_TEST(DotAfterDigits) {
 Y_UNIT_TEST(AlterDatabase) {
     TCases cases {
         {"use plato;alter database `/Root/test` owner to user1;", "USE plato;\n\nALTER DATABASE `/Root/test` OWNER TO user1;\n"},
+        {"use plato;alter database `/Root/test` set key1 = value1;", "USE plato;\n\nALTER DATABASE `/Root/test` SET key1 = value1;\n"},
+        {"use plato;alter database `/Root/test` set (key1 = value1);", "USE plato;\n\nALTER DATABASE `/Root/test` SET (key1 = value1);\n"},
+        {"use plato;alter database `/Root/test` set (\n\tkey1 = value1,\n\tkey2 = value2\n);", "USE plato;\n\nALTER DATABASE `/Root/test` SET (key1 = value1, key2 = value2);\n"},
+        {"use plato;alter database `/Root/test` set flag1;", "USE plato;\n\nALTER DATABASE `/Root/test` SET flag1;\n"},
     };
 
     TSetup setup;

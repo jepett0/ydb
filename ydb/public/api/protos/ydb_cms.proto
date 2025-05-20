@@ -94,6 +94,11 @@ message DatabaseQuotas {
     // exiting from the overloaded state.
     uint64 data_size_soft_quota = 2;
 
+    // to do: write
+    uint64 shards_quota = 7;
+    // to do: write
+    uint64 paths_quota = 8;
+
     // A maximum count of shards in all data streams.
     uint64 data_stream_shards_quota = 3;
     // A maximum storage that will be reserved for all data stream shards.
@@ -101,7 +106,7 @@ message DatabaseQuotas {
     // A minimum value of `TtlSettings.run_interval_seconds` that can be specified.
     // Default is 1800 (15 minutes).
     uint32 ttl_min_run_internal_seconds = 4;
-    
+
     message StorageQuotas {
         // in theory an arbitrary string, but in practice "hdd" or "ssd"
         string unit_kind = 1;
@@ -120,7 +125,7 @@ message ScaleRecommenderPolicies {
         message TargetTrackingPolicy {
             oneof target {
                 // A percentage of compute resources' average CPU utilization.
-                uint32 average_cpu_utilization_percent = 1 [(Ydb.value) = "[10; 90]"]; 
+                uint32 average_cpu_utilization_percent = 1 [(Ydb.value) = "[10; 90]"];
             }
         }
 

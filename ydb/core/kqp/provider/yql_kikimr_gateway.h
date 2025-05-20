@@ -672,6 +672,8 @@ struct TKikimrTableMetadata : public TThrRefBase {
 struct TAlterDatabaseSettings {
     TString DatabasePath;
     std::optional<TString> Owner;
+    std::optional<ui64> ShardsLimit;
+    std::optional<ui64> PathsLimit;
 };
 
 struct TCreateUserSettings {

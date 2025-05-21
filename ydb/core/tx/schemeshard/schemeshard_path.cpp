@@ -779,14 +779,23 @@ const TPath::TChecker& TPath::TChecker::ShardsLimit(ui64 delta, EStatus status) 
         << ", shards total: " << shardsTotal
         << ", backup shards: " << backupShards);
 
-    if (!delta || (shardsTotal - backupShards) + delta <= domainInfo->GetSchemeLimits().MaxShards) {
-        return *this;
+    const ui64 shards = (shardsTotal - backupShards);
+    // legacy limit
+    const ui64 shardsSchemeLimit = domainInfo->GetSchemeLimits().MaxShards;
+    const ui64 shardsDatabaseQuota = domainInfo->GetDatabaseQuotas()->shards_quota();
+    const ui64 limit = shardsDatabaseQuota ? std::min(shardsSchemeLimit, shardsDatabaseQuota) : shardsSchemeLimit;
+
+    if (delta) {
+        if (shards + delta > limit) {
+            return Fail(status, TStringBuilder() << "shards count limit exceeded (in subdomain)"
+                << ", limit: " << limit
+                << ", shards: " << shards
+                << ", delta: " << delta
+            );
+        }
     }
 
-    return Fail(status, TStringBuilder() << "shards count limit exceeded (in subdomain)"
-        << ", limit: " << domainInfo->GetSchemeLimits().MaxShards
-        << ", shards: " << (shardsTotal - backupShards)
-        << ", delta: " << delta);
+    return *this;
 }
 
 const TPath::TChecker& TPath::TChecker::PQPartitionsLimit(ui64 delta, EStatus status) const {

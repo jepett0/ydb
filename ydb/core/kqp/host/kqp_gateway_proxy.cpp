@@ -585,6 +585,20 @@ bool IsDdlPrepareAllowed(TKikimrSessionContext& sessionCtx) {
         return PrepareUnsupported<TGenericResult>(#name); \
     }
 
+void FillAlterDatabaseOwner(NKikimrSchemeOp::TModifyScheme& schemeTx, const TString& name, const TString& newOwner) {
+    schemeTx.SetOperationType(NKikimrSchemeOp::ESchemeOpModifyACL);
+    auto& modifyACL = *schemeTx.MutableModifyACL();
+    modifyACL.SetNewOwner(newOwner);
+    modifyACL.SetName(name);
+}
+
+void FillAlterDatabaseQuotas(NKikimrSchemeOp::TModifyScheme& schemeTx, const TString& name, const Ydb::Cms::DatabaseQuotas& quotas) {
+    schemeTx.SetOperationType(NKikimrSchemeOp::ESchemeOpAlterExtSubDomain);
+    auto& subdomain = *schemeTx.MutableSubDomain();
+    subdomain.SetName(name);
+    *subdomain.MutableDatabaseQuotas() = quotas;
+}
+
 class TKqpGatewayProxy : public IKikimrGateway {
 public:
     TKqpGatewayProxy(const TIntrusivePtr<IKqpGateway>& gateway,
@@ -640,21 +654,24 @@ public:
 
             const auto& [dirname, basename] = NSchemeHelpers::SplitPathByDirAndBaseNames(settings.DatabasePath);
 
-            NKikimrSchemeOp::TModifyScheme schemeTx;
-            schemeTx.SetOperationType(NKikimrSchemeOp::ESchemeOpModifyACL);
-            schemeTx.SetWorkingDir(dirname);
-            schemeTx.MutableModifyACL()->SetNewOwner(settings.Owner.value());
-            schemeTx.MutableModifyACL()->SetName(basename);
-
-            auto condition = schemeTx.AddApplyIf();
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeSubDomain);
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeExtSubDomain);
-
             auto& phyQuery = *SessionCtx->Query().PreparingQuery->MutablePhysicalQuery();
             auto& phyTx = *phyQuery.AddTransactions();
             phyTx.SetType(NKqpProto::TKqpPhyTx::TYPE_SCHEME);
 
-            phyTx.MutableSchemeOperation()->MutableModifyPermissions()->Swap(&schemeTx);
+            NKikimrSchemeOp::TModifyScheme* schemeTx = nullptr;
+            if (settings.Owner) {
+                schemeTx = phyTx.MutableSchemeOperation()->MutableModifyPermissions();
+                FillAlterDatabaseOwner(*schemeTx, basename, settings.Owner.value());
+            } if (settings.Quotas) {
+                schemeTx = phyTx.MutableSchemeOperation()->MutableAlterDatabase();
+                FillAlterDatabaseQuotas(*schemeTx, basename, *settings.Quotas);
+            }
+            schemeTx->SetWorkingDir(dirname);
+
+            auto condition = schemeTx->AddApplyIf();
+            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeSubDomain);
+            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeExtSubDomain);
+
             TGenericResult result;
             result.SetSuccess();
             alterDatabasePromise.SetValue(result);

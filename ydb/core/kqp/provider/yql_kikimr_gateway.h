@@ -11,6 +11,7 @@
 #include <ydb/library/yql/dq/runtime/dq_transport.h>
 #include <yql/essentials/minikql/computation/mkql_computation_node_holders.h>
 #include <yql/essentials/utils/resetable_setting.h>
+#include <ydb/public/api/protos/ydb_cms.pb.h>
 #include <ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/topic/client.h>
 #include <ydb/services/metadata/abstract/kqp_common.h>
 #include <ydb/services/metadata/manager/abstract.h>
@@ -672,8 +673,7 @@ struct TKikimrTableMetadata : public TThrRefBase {
 struct TAlterDatabaseSettings {
     TString DatabasePath;
     std::optional<TString> Owner;
-    std::optional<ui64> ShardsLimit;
-    std::optional<ui64> PathsLimit;
+    std::optional<Ydb::Cms::DatabaseQuotas> Quotas;
 };
 
 struct TCreateUserSettings {

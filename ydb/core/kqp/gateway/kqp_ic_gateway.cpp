@@ -151,6 +151,20 @@ void FillPhysicalResult(std::unique_ptr<TEvKqpExecuter::TEvTxResponse>& ev, IKqp
     }
 }
 
+void FillAlterDatabaseOwner(TModifyScheme& schemeTx, const TString& name, const TString& newOwner) {
+    schemeTx.SetOperationType(ESchemeOpModifyACL);
+    auto& modifyACL = *schemeTx.MutableModifyACL();
+    modifyACL.SetNewOwner(newOwner);
+    modifyACL.SetName(name);
+}
+
+void FillAlterDatabaseQuotas(TModifyScheme& schemeTx, const TString& name, const Ydb::Cms::DatabaseQuotas& quotas) {
+    schemeTx.SetOperationType(ESchemeOpAlterExtSubDomain);
+    auto& subdomain = *schemeTx.MutableSubDomain();
+    subdomain.SetName(name);
+    *subdomain.MutableDatabaseQuotas() = quotas;
+}
+
 template<typename TRequest, typename TResponse, typename TResult>
 class TProxyRequestHandler: public TRequestHandlerBase<
     TProxyRequestHandler<TRequest, TResponse, TResult>,
@@ -915,15 +929,20 @@ public:
 
             const auto& [dirname, basename] = NSchemeHelpers::SplitPathByDirAndBaseNames(settings.DatabasePath);
 
-            NKikimrSchemeOp::TModifyScheme* modifyScheme = ev->Record.MutableTransaction()->MutableModifyScheme();
-            modifyScheme->SetOperationType(NKikimrSchemeOp::ESchemeOpModifyACL);
+            TModifyScheme* modifyScheme = ev->Record.MutableTransaction()->MutableModifyScheme();
             modifyScheme->SetWorkingDir(dirname);
-            modifyScheme->MutableModifyACL()->SetNewOwner(settings.Owner.value());
-            modifyScheme->MutableModifyACL()->SetName(basename);
 
             auto condition = modifyScheme->AddApplyIf();
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeSubDomain);
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeExtSubDomain);
+            condition->AddPathTypes(EPathType::EPathTypeSubDomain);
+            condition->AddPathTypes(EPathType::EPathTypeExtSubDomain);
+
+            if (settings.Owner) {
+                modifyScheme->SetOperationType(ESchemeOpModifyACL);
+                FillAlterDatabaseOwner(*modifyScheme, basename, settings.Owner.value());
+            } else if (settings.Quotas) {
+                modifyScheme->SetOperationType(ESchemeOpAlterExtSubDomain);
+                FillAlterDatabaseQuotas(*modifyScheme, basename, *settings.Quotas);
+            }
 
             SendSchemeRequest(ev.Release()).Apply(
                 [alterDatabasePromise](const TFuture<TGenericResult>& future) mutable {

@@ -111,9 +111,9 @@ namespace {
             if (name == "owner") {
                 alterDatabaseSettings.Owner = setting.Value().Cast<TCoAtom>().StringValue();
             } else if (name == "SHARDS_LIMIT") {
-                alterDatabaseSettings.ShardsLimit = FromString<ui64>(setting.Value().Cast<TCoAtom>().Value());
+                alterDatabaseSettings.Quotas->set_shards_quota(FromString<ui64>(setting.Value().Cast<TCoAtom>().Value()));
             } else if (name == "PATHS_LIMIT") {
-                alterDatabaseSettings.PathsLimit = FromString<ui64>(setting.Value().Cast<TCoAtom>().Value());
+                alterDatabaseSettings.Quotas->set_paths_quota(FromString<ui64>(setting.Value().Cast<TCoAtom>().Value()));
             } else {
                 YQL_ENSURE(false);
             }

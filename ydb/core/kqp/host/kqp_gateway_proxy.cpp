@@ -662,15 +662,15 @@ public:
             if (settings.Owner) {
                 schemeTx = phyTx.MutableSchemeOperation()->MutableModifyPermissions();
                 FillAlterDatabaseOwner(*schemeTx, basename, settings.Owner.value());
+
+                auto condition = schemeTx->AddApplyIf();
+                condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeSubDomain);
+                condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeExtSubDomain);
             } if (settings.Quotas) {
                 schemeTx = phyTx.MutableSchemeOperation()->MutableAlterDatabase();
                 FillAlterDatabaseQuotas(*schemeTx, basename, *settings.Quotas);
             }
             schemeTx->SetWorkingDir(dirname);
-
-            auto condition = schemeTx->AddApplyIf();
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeSubDomain);
-            condition->AddPathTypes(NKikimrSchemeOp::EPathType::EPathTypeExtSubDomain);
 
             TGenericResult result;
             result.SetSuccess();

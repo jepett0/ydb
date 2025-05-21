@@ -932,13 +932,13 @@ public:
             TModifyScheme* modifyScheme = ev->Record.MutableTransaction()->MutableModifyScheme();
             modifyScheme->SetWorkingDir(dirname);
 
-            auto condition = modifyScheme->AddApplyIf();
-            condition->AddPathTypes(EPathType::EPathTypeSubDomain);
-            condition->AddPathTypes(EPathType::EPathTypeExtSubDomain);
-
             if (settings.Owner) {
                 modifyScheme->SetOperationType(ESchemeOpModifyACL);
                 FillAlterDatabaseOwner(*modifyScheme, basename, settings.Owner.value());
+
+                auto condition = modifyScheme->AddApplyIf();
+                condition->AddPathTypes(EPathType::EPathTypeSubDomain);
+                condition->AddPathTypes(EPathType::EPathTypeExtSubDomain);
             } else if (settings.Quotas) {
                 modifyScheme->SetOperationType(ESchemeOpAlterExtSubDomain);
                 FillAlterDatabaseQuotas(*modifyScheme, basename, *settings.Quotas);

@@ -1924,7 +1924,7 @@ virtual TStatus HandleCreateTable(TKiCreateTable create, TExprContext& ctx) over
         }
 
         const THashSet<TString> supportedSettings = {
-            "owner"
+            "owner", "SHARDS_LIMIT", "PATHS_LIMIT"
         };
 
         for (const auto& setting : node.Settings()) {
@@ -1932,7 +1932,7 @@ virtual TStatus HandleCreateTable(TKiCreateTable create, TExprContext& ctx) over
 
             if (!supportedSettings.contains(name)) {
                 ctx.AddError(TIssue(ctx.GetPosition(setting.Name().Pos()),
-                    TStringBuilder() << "Unknown create user setting: " << name));
+                    TStringBuilder() << "Unknown ALTER DATABASE setting: " << name));
                 return TStatus::Error;
             }
 

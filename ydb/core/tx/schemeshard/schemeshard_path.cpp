@@ -781,9 +781,10 @@ const TPath::TChecker& TPath::TChecker::ShardsLimit(ui64 delta, EStatus status) 
 
     const ui64 shards = (shardsTotal - backupShards);
     // legacy limit
-    const ui64 shardsSchemeLimit = domainInfo->GetSchemeLimits().MaxShards;
-    const ui64 shardsDatabaseQuota = domainInfo->GetDatabaseQuotas()->shards_quota();
-    const ui64 limit = shardsDatabaseQuota ? std::min(shardsSchemeLimit, shardsDatabaseQuota) : shardsSchemeLimit;
+    ui64 limit = domainInfo->GetSchemeLimits().MaxShards;
+    if (domainInfo->GetDatabaseQuotas() && domainInfo->GetDatabaseQuotas()->shards_quota()) {
+        limit = std::min(limit, domainInfo->GetDatabaseQuotas()->shards_quota());
+    }
 
     if (delta) {
         if (shards + delta > limit) {

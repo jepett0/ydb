@@ -4919,6 +4919,17 @@ bool TSqlTranslation::ObjectFeatureValueClause(const TRule_object_feature_value&
             result = TDeferredAtom(BuildLiteralBool(Ctx.Pos(), FromString<bool>(value)), Ctx);
             break;
         }
+        case TRule_object_feature_value::kAltObjectFeatureValue5:
+        {
+            TString token = Ctx.Token(node.GetAlt_object_feature_value5().GetRule_integer1().GetToken1());
+            ui64 value = 0;
+            TString suffix;
+            if (!ParseNumbers(Ctx, token, value, suffix)) {
+                return {};
+            }
+            result = TDeferredAtom(BuildQuotedAtom(Ctx.Pos(), ToString(value), TNodeFlags::ArbitraryContent), Ctx);
+            break;
+        }
         case TRule_object_feature_value::ALT_NOT_SET:
             Y_ABORT("You should change implementation according to grammar changes");
     }

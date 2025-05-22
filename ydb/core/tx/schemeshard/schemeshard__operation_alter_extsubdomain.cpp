@@ -962,7 +962,13 @@ public:
             alter->SetDeclaredSchemeQuotas(inputSettings.GetDeclaredSchemeQuotas());
         }
         if (inputSettings.HasDatabaseQuotas()) {
-            alter->SetDatabaseQuotas(inputSettings.GetDatabaseQuotas());
+            const auto& quotas = inputSettings.GetDatabaseQuotas();
+            alter->SetDatabaseQuotas(quotas);
+            if (quotas.shards_quota()) {
+                auto schemeLimits = subdomainInfo->GetSchemeLimits();
+                schemeLimits.MaxShards = quotas.shards_quota();
+                alter->SetSchemeLimits(schemeLimits);
+            }
         }
 
         if (const auto& auditSettings = subdomainInfo->GetAuditSettings()) {

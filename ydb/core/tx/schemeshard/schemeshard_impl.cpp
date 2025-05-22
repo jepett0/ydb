@@ -2233,14 +2233,23 @@ void TSchemeShard::PersistSubDomainDeclaredSchemeQuotas(NIceDb::TNiceDb& db, con
 void TSchemeShard::PersistSubDomainDatabaseQuotas(NIceDb::TNiceDb& db, const TPathId& pathId, const TSubDomainInfo& subDomain) {
     Y_ABORT_UNLESS(IsLocalId(pathId));
 
-    if (const auto& databaseQuotas = subDomain.GetDatabaseQuotas()) {
+    if (const auto& quotas = subDomain.GetDatabaseQuotas()) {
         TString serialized;
-        Y_ABORT_UNLESS(databaseQuotas->SerializeToString(&serialized));
-        db.Table<Schema::SubDomains>().Key(pathId.LocalPathId).Update(
-                NIceDb::TUpdate<Schema::SubDomains::DatabaseQuotas>(serialized));
+        Y_ABORT_UNLESS(quotas->SerializeToString(&serialized));
+        auto table = db.Table<Schema::SubDomains>().Key(pathId.LocalPathId);
+        table.Update(
+            NIceDb::TUpdate<Schema::SubDomains::DatabaseQuotas>(serialized)
+        );
+
+        if (quotas->shards_quota()) {
+            table.Update(
+                NIceDb::TUpdate<Schema::SubDomains::ShardsLimit>(quotas->shards_quota())
+            );
+        }
     } else {
         db.Table<Schema::SubDomains>().Key(pathId.LocalPathId).Update(
-                NIceDb::TNull<Schema::SubDomains::DatabaseQuotas>());
+            NIceDb::TNull<Schema::SubDomains::DatabaseQuotas>()
+        );
     }
 }
 

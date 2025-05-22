@@ -739,6 +739,178 @@ bool TSqlTranslation::CreateTableIndex(const TRule_table_index& node, TVector<TI
     return true;
 }
 
+bool TSqlTranslation::ParseDatabaseSettings(const TRule_object_features& in, TAlterDatabaseParameters& out) {
+    switch (in.GetAltCase()) {
+        case TRule_object_features::kAltObjectFeatures1:
+            return ParseDatabaseSetting(in.alt_object_features1().GetRule_object_feature1(), out);
+        case TRule_object_features::kAltObjectFeatures2:
+            if (!ParseDatabaseSetting(in.alt_object_features2().GetRule_object_feature2()), out) {
+                return false;
+            }
+            for (const auto& feature : in.alt_object_features2().GetBlock3()) {
+                if (!ParseDatabaseSetting(feature.GetRule_object_feature2()), out) {
+                    return false;
+                }
+            }
+            return true;
+        case TRule_object_features::ALT_NOT_SET:
+            AltNotImplemented("object_features", in);
+            return false;
+    }
+}
+
+bool TSqlTranslation::ParseDatabaseSetting(const TRule_object_feature& in, TAlterDatabaseParameters& out) {
+    switch (in.GetAltCase()) {
+        case TRule_object_feature::kAltObjectFeature1: {
+            const auto& kv = in.GetAlt_object_feature1().GetRule_object_feature_kv1();
+            const auto key = to_lower(Id(kv.GetRule_an_id_or_type1(), *this));
+            const auto& valueNode = kv.GetRule_object_feature_value3();
+            if (key == "shards_limit") {
+                const auto [success, value, stringValue] = GetIndexSettingValue<ui64>(valueNode);
+                if (!success) {
+                    Ctx.Error() << "Invalid shards limit: " << stringValue;
+                    return false;
+                }
+                out.DatabaseQuotas["shards_limit"] = value;
+            }
+            const auto& ruleValue = kv.GetRule_object_feature_value3();
+            TDeferredAtom value;
+            if (!ObjectFeatureValueClause(ruleValue, value)) {
+                return false;
+            }
+            result[key] = value;
+            return true;
+        }
+        case TRule_object_feature::kAltObjectFeature2:
+            // to do: implement when the need arises
+            return true;
+        case TRule_object_feature::ALT_NOT_SET:
+            AltNotImplemented("object_feature", in);
+            return false;
+    }
+}
+
+template<typename T>
+std::tuple<bool, T, TString> TSqlTranslation::GetIndexSettingValue(const TRule_index_setting_value& node) {
+    T value{};
+    // id_or_type
+    if (node.HasAlt_index_setting_value1()) {
+        const TString stringValue = to_lower(IdEx(node.GetAlt_index_setting_value1().GetRule_id_or_type1(), *this).Name);
+        if (!TryFromString<T>(stringValue, value)) {
+            return {false, value, stringValue};
+        }
+        return {true, value, stringValue};
+    }
+    // STRING_VALUE
+    else if (node.HasAlt_index_setting_value2()) {
+        const TString stringValue = to_lower(Token(node.GetAlt_index_setting_value2().GetToken1()));
+        const auto unescaped = StringContent(Ctx, Ctx.Pos(), stringValue);
+        if (!unescaped) {
+            return {false, value, stringValue};
+        }
+        if (!TryFromString<T>(unescaped->Content, value)) {
+            return {false, value, stringValue};
+        }
+        return {true, value, unescaped->Content};
+    } else {
+        Y_ABORT("You should change implementation according to grammar changes");
+    }
+}
+
+template<>
+std::tuple<bool, ui64, TString> TSqlTranslation::GetIndexSettingValue(const TRule_index_setting_value& node) {
+    const auto& intNode = node.GetAlt_index_setting_value3().GetRule_integer1();
+    const TString stringValue = Token(intNode.GetToken1());
+    ui64 value = 0;
+    TString suffix;
+    if (!ParseNumbers(Ctx, stringValue, value, suffix)) {
+        return {false, value, stringValue};
+    }
+    return {true, value, stringValue};
+}
+
+template<>
+std::tuple<bool, bool, TString> TSqlTranslation::GetIndexSettingValue(const TRule_index_setting_value& node) {
+    bool value = false;
+    const TString stringValue = to_lower(Token(node.GetAlt_index_setting_value4().GetRule_bool_value1().GetToken1()));;
+    if (!TryFromString<bool>(stringValue, value)) {
+        return {false, value, stringValue};
+    }
+    return {true, value, stringValue};
+}
+
+bool TSqlTranslation::CreateIndexSettingEntry(const TIdentifier &id,
+        const TRule_index_setting_value& node,
+        TIndexDescription::EType indexType,
+        TIndexDescription::TIndexSettings& indexSettings) {
+
+
+    if (indexType == TIndexDescription::EType::GlobalVectorKmeansTree) {
+        TVectorIndexSettings &vectorIndexSettings = std::get<TVectorIndexSettings>(indexSettings);
+
+        if (to_lower(id.Name) == "distance") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<TVectorIndexSettings::EDistance>(node);
+            if (!success) {
+                Ctx.Error() << "Invalid distance: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.Distance = value;
+        } else if (to_lower(id.Name) == "similarity") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<TVectorIndexSettings::ESimilarity>(node);
+            if (!success) {
+                Ctx.Error() << "Invalid similarity: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.Similarity = value;
+        } else if (to_lower(id.Name) == "vector_type") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<TVectorIndexSettings::EVectorType>(node);
+            if (!success) {
+                Ctx.Error() << "Invalid vector_type: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.VectorType = value;
+        } else if (to_lower(id.Name) == "vector_dimension") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<ui64>(node);
+            if (!success || value > Max<ui32>()) {
+                Ctx.Error() << "Invalid vector_dimension: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.VectorDimension = value;
+        } else if (to_lower(id.Name) == "clusters") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<ui64>(node);
+            if (!success || value > Max<ui32>()) {
+                Ctx.Error() << "Invalid clusters: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.Clusters = value;
+        } else if (to_lower(id.Name) == "levels") {
+            const auto [success, value, stringValue] = GetIndexSettingValue<ui64>(node);
+            if (!success || value > Max<ui32>()) {
+                Ctx.Error() << "Invalid levels: " << stringValue;
+                return false;
+            }
+            vectorIndexSettings.Levels = value;
+        } else {
+            Ctx.Error() << "Unknown index setting: " << id.Name;
+            return false;
+        }
+    } else {
+        Ctx.Error() << "Unknown index setting: " << id.Name;
+        return false;
+    }
+    return true;
+
+}
+
+std::pair<TString, TViewDescription> TableKeyImpl(const std::pair<bool, TString>& nameWithAt, TViewDescription view, TTranslation& ctx) {
+    if (nameWithAt.first) {
+        view = {"@"};
+        ctx.Context().IncrementMonCounter("sql_features", "AnonymousTable");
+    }
+
+    return std::make_pair(nameWithAt.second, view);
+}
+
 bool TSqlTranslation::CreateIndexSettings(const TRule_with_index_settings& settingsNode,
         TIndexDescription::EType indexType,
         TIndexDescription::TIndexSettings& indexSettings) {

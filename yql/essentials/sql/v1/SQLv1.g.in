@@ -702,7 +702,14 @@ table_as_source: AS values_source;
 alter_database_stmt: ALTER DATABASE an_id_schema alter_database_action;
 alter_database_action:
     OWNER TO role_name
-  | SET object_features
+  | SET database_settings
+;
+database_settings: LPAREN database_setting (COMMA database_setting)* RPAREN;
+database_setting: an_id EQUALS database_setting_value;
+database_setting_value:
+    bool_value
+  | integer
+  | STRING_VALUE
 ;
 
 alter_table_stmt: ALTER TABLE simple_table_ref alter_table_action (COMMA alter_table_action)*;

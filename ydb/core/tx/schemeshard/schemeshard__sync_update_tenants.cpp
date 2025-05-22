@@ -108,7 +108,19 @@ struct TSchemeShard::TTxUpdateTenant : public TSchemeShard::TRwTxBase {
             }
 
             if (record.HasDatabaseQuotas()) {
-                subdomain->SetDatabaseQuotas(record.GetDatabaseQuotas(), Self);
+                const auto& quotas = record.GetDatabaseQuotas();
+                subdomain->SetDatabaseQuotas(quotas, Self);
+                if (quotas.shards_quota()) {
+                    // to do: add specific scheme limit changers to the subdomain interface
+                    auto schemeLimits = subdomain->GetSchemeLimits();
+                    schemeLimits.MaxShards = quotas.shards_quota();
+                    // to do: figure out if reporting quota change here is ok.
+                    // It might be a better idea to report the change in the HandleReply function.
+                    subdomain->SetSchemeLimits(schemeLimits);
+                    {
+                        LOG_DEBUG_S(ctx, NKikimrServices::FLAT_TX_SCHEMESHARD, "Updated TENANT MaxShards SchemeLimit to be equal to: " << schemeLimits.MaxShards);
+                    }
+                }
                 // Note: subdomain version is persisted in PersistStoragePools below
                 Self->PersistSubDomainDatabaseQuotas(db, Self->RootPathId(), *subdomain);
             }
